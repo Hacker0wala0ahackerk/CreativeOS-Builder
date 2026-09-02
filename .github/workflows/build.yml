@@ -10,9 +10,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Build Fedora ISO in Docker
+      - name: Setup Loop Devices and Build ISO
         run: |
-          docker run --privileged --rm -v ${{ github.workspace }}:/build fedora:latest bash -c "
+          sudo mknod -m 0660 /dev/loop0 b 7 0 || true
+          sudo mknod -m 0660 /dev/loop1 b 7 1 || true
+          
+          docker run --privileged --device-cgroup-rule='b 7:* rmw' -v /dev:/dev -v ${{ github.workspace }}:/build fedora:latest bash -c "
             dnf install -y livecd-tools lorax && \
             livecd-creator --config=/build/creativeos.ks --fslabel=CreativeOS-x86_64 --cache=/var/cache/live && \
             mv CreativeOS-x86_64.iso /build/
