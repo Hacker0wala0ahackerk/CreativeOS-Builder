@@ -1,0 +1,26 @@
+name: Build CreativeOS ISO
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-iso:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build Fedora ISO in Docker
+        run: |
+          docker run --privileged --rm -v ${{ github.workspace }}:/build fedora:latest bash -c "
+            dnf install -y livecd-tools lorax && \
+            livecd-creator --config=/build/creativeos.ks --fslabel=CreativeOS-x86_64 --cache=/var/cache/live && \
+            mv CreativeOS-x86_64.iso /build/
+          "
+
+      - name: Upload ISO Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CreativeOS-x86_64-ISO
+          path: CreativeOS-x86_64.iso
+          
