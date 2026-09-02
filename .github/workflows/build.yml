@@ -10,15 +10,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Loop Devices and Build ISO
+      - name: Build ISO using Mock
         run: |
-          sudo mknod -m 0660 /dev/loop0 b 7 0 || true
-          sudo mknod -m 0660 /dev/loop1 b 7 1 || true
-          
-          docker run --privileged --device-cgroup-rule='b 7:* rmw' -v /dev:/dev -v ${{ github.workspace }}:/build fedora:latest bash -c "
-            dnf install -y livecd-tools lorax && \
-            livecd-creator --config=/build/creativeos.ks --fslabel=CreativeOS-x86_64 --cache=/var/cache/live && \
-            mv CreativeOS-x86_64.iso /build/
+          docker run --privileged --net=host -v ${{ github.workspace }}:/build fedora:latest bash -c "
+            dnf install -y mock livecd-tools lorax && \
+            useradd -m builder && \
+            usermod -aG mock builder && \
+            su - builder -c 'mock -r fedora-40-x86_64 --init' && \
+            su - builder -c 'mock -r fedora-40-x86_64 --install livecd-tools lorax' && \
+            su - builder -c 'mock -r fedora-40-x86_64 --copyin /build/creativeos.ks /creativeos.ks' && \
+            su - builder -c 'mock -r fedora-40-x86_64 --shell \"livecd-creator --config=/creativeos.ks --fslabel=CreativeOS-x86_64 --cache=/var/cache/live\"' && \
+            su - builder -c 'mock -r fedora-40-x86_64 --copyout /CreativeOS-x86_64.iso /build/CreativeOS-x86_64.iso'
           "
 
       - name: Upload ISO Artifact
@@ -26,4 +28,3 @@ jobs:
         with:
           name: CreativeOS-x86_64-ISO
           path: CreativeOS-x86_64.iso
-          
